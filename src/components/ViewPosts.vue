@@ -7,7 +7,7 @@ export default {
     data() {
         return {
             moods: ["Happy", "Sad", "Angry"],
-            posts: [], // array of post objects
+            posts: [],
             entry: "",
             mood: "",
             showEditPost: false,
@@ -24,10 +24,9 @@ export default {
             }
         }
     },
-    created() { // created is a hook that executes as soon as Vue instance is created
+    created() {
         axios.get(`${this.baseUrl}/posts`)
             .then(response => {
-                // this gets the data, which is an array, and pass the data to Vue instance's posts property
                 this.posts = response.data
             })
             .catch(error => {
@@ -36,10 +35,39 @@ export default {
     },
     methods: {
         editPost(id) {
-            
+            const post = this.posts.find(p => p.id === id);
+            if (post) {
+                this.entry = post.entry;
+                this.mood = post.mood;
+                this.editPostId = id;
+                this.showEditPost = true;
+            }
         },
         updatePost(event) {
+            event.preventDefault();
+            const updatedPost = {
+                entry: this.entry,
+                mood: this.mood
+            };
             
+            axios.post(`${this.baseUrl}/updatePost`, {
+                id: this.editPostId,
+                ...updatedPost
+            })
+            .then(response => {
+                const index = this.posts.findIndex(p => p.id === this.editPostId);
+                if (index !== -1) {
+                    this.posts[index] = { ...this.posts[index], ...updatedPost };
+                }
+                this.showEditPost = false;
+                this.entry = "";
+                this.mood = "";
+                this.editPostId = "";
+            })
+            .catch(error => {
+                console.error('Error updating post:', error);
+                alert('Error updating post: ' + error.message);
+            });
         }
     }
 }
@@ -61,7 +89,7 @@ export default {
                     <td>{{ post.id }}</td>
                     <td>{{ post.entry }}</td>
                     <td>{{ post.mood }}</td>
-                    <td><button>Edit</button></td>
+                    <td><button @click="editPost(post.id)">Edit</button></td>
                 </tr>
             </tbody>
 
@@ -70,7 +98,7 @@ export default {
         <div id="editPost" v-if="showEditPost">
             <h3>Edit Post</h3>
             <div id="postContent" class="mx-3">
-                <form>
+                <form @submit="updatePost">
                     <div class="mb-3">
                         <label for="entry" class="form-label">Entry</label>
                         <textarea id="entry" class="form-control" v-model="entry" required></textarea>
